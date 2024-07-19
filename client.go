@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"sync"
 )
 
@@ -15,11 +17,6 @@ var (
 	client     = &http.Client{}
 	mu         sync.Mutex // Mutex for thread-safe access to jwtToken
 )
-
-type User struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
 type LoginRequest struct {
 	User User `json:"user"`
@@ -91,7 +88,7 @@ func GetJWT() (string, error) {
 	return jwtToken, nil
 }
 
-func MakeRequest(method, path string, body interface{}) (*http.Response, error) {
+func makeRequest(method, path string, body interface{}) (*http.Response, error) {
 	url := fmt.Sprintf("%s%s", BASE_URL, path)
 
 	var requestBody []byte
@@ -124,4 +121,23 @@ func MakeRequest(method, path string, body interface{}) (*http.Response, error) 
 	}
 
 	return resp, nil
+}
+
+// Helper function to parse JSON responses
+func parseJSONResponse(response *http.Response, result interface{}) error {
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, result)
+}
+
+// Helper function to format query parameters
+func formatQueryParams(params map[string]string) string {
+	query := url.Values{}
+	for key, value := range params {
+		query.Add(key, value)
+	}
+	return query.Encode()
 }
